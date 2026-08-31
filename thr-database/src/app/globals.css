@@ -668,3 +668,197 @@ button.primary:hover {
   font-size: 10px;
   font-style: italic;
 }
+
+.collection-description {
+  margin: 5px 0 0;
+  color: #756b5d;
+  font-size: 13px;
+}
+
+.record-count {
+  margin: 0 0 10px;
+  color: #756b5d;
+  font-size: 12px;
+}
+
+.empty-records {
+  padding: 30px;
+  border: 1px dashed #b4a58f;
+  background: #f5f1e8;
+  text-align: center;
+  color: #665846;
+}
+
+.search-note {
+  margin-top: 10px;
+  color: #756b5d;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.form-view-placeholder {
+  padding: 35px;
+  border: 1px solid #c7baa7;
+  background: #f5f1e8;
+}
+
+.form-view-placeholder h3 {
+  margin-top: 0;
+  font-family: Georgia, serif;
+  color: #4b3a28;
+}
+
+.workspace-error {
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 9px 10px;
+  border: 1px solid #c7baa7;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  background: #75624b;
+  color: #fff;
+  font-size: 12px;
+}
+
+.data-table td {
+  background: #faf8f1;
+  color: #40372d;
+  font-size: 12px;
+}
+
+.data-table tbody tr:hover td {
+  background: #eee7db;
+}
+
+.empty-search {
+  padding: 20px;
+  text-align: center;
+  color: #756b5d;
+}
+
+.data-table tbody tr {
+  cursor: pointer;
+}
+
+.data-table tbody tr:hover td {
+  background: #eee7db;
+}
+
+.data-table tbody tr.selected-record td {
+  background: #c9b89d;
+  color: #33291f;
+  font-weight: 600;
+}
+
+.data-table tbody tr.selected-record:hover td {
+  background: #c9b89d;
+}
+
+.record-form {
+  max-width: 850px;
+  padding: 24px;
+  border: 1px solid #c7baa7;
+  background: #f8f5ed;
+}
+
+.form-field {
+  margin-bottom: 18px;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 5px;
+  color: #4b3a28;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.field-value {
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid #b9ab96;
+  background: #fffdf8;
+  color: #40372d;
+  font-size: 13px;
+}
+
+.required-mark {
+  margin-left: 3px;
+  color: #8b2e2e;
+}
+
+.form-control {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+
+  border: 1px solid #b9ab96;
+  border-radius: 3px;
+
+  background: #fffdf8;
+  color: #40372d;
+
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.form-control:focus {
+  outline: 2px solid #9a805d;
+  outline-offset: 1px;
+}
+
+.form-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.form-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.form-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #c7baa7;
+}
+
+.save-success {
+  margin-top: 15px;
+  padding: 10px;
+
+  border: 1px solid #8b9a72;
+  background: #edf1e7;
+
+  color: #48563a;
+  font-size: 13px;
+}
+
+.image-field-placeholder {
+  padding: 18px;
+
+  border: 1px dashed #b9ab96;
+  background: #f1ece2;
+
+  color: #756b5d;
+  font-size: 12px;
+}

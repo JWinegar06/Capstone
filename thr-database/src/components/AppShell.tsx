@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import TopBar from "./TopBar";
-import Sidebar from "./Sidebar";
+import Sidebar from "./SideBar";
 import MainWorkspace from "./MainWorkspace";
 
 export default function AppShell() {
