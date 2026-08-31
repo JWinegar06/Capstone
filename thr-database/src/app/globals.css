@@ -625,3 +625,46 @@ button.primary:hover {
 .workspace-content {
   min-height: 400px;
 }
+
+.sidebar-error {
+  padding: 8px 12px;
+  margin: 0;
+
+  color: #8b2e2e;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* =========================
+   FIELD LIST
+   ========================= */
+
+.field-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.field-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  padding: 6px 12px;
+
+  border-bottom: 1px solid
+    rgba(130, 116, 95, 0.25);
+
+  font-size: 12px;
+}
+
+.field-name {
+  color: #3f3428;
+}
+
+.field-type {
+  color: #7a6c59;
+  font-size: 10px;
+  font-style: italic;
+}

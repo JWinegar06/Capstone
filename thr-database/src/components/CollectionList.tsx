@@ -1,9 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 type Collection = {
   id: string;
-  libraryId: string;
+  library_id: string;
   name: string;
+  description: string | null;
+  display_order: number;
 };
 
 type CollectionListProps = {
@@ -12,68 +16,51 @@ type CollectionListProps = {
   onSelectCollection?: (collectionId: string) => void;
 };
 
-const sampleCollections: Collection[] = [
-  {
-    id: "c1",
-    libraryId: "1",
-    name: "Artifacts",
-  },
-  {
-    id: "c2",
-    libraryId: "1",
-    name: "Books",
-  },
-  {
-    id: "c3",
-    libraryId: "1",
-    name: "Checks",
-  },
-  {
-    id: "c4",
-    libraryId: "1",
-    name: "Maps",
-  },
-  {
-    id: "c5",
-    libraryId: "1",
-    name: "Photos",
-  },
-  {
-    id: "c6",
-    libraryId: "1",
-    name: "Post Cards",
-  },
-  {
-    id: "c7",
-    libraryId: "1",
-    name: "Stock Certificates",
-  },
-
-  {
-    id: "c8",
-    libraryId: "2",
-    name: "Books",
-  },
-  {
-    id: "c9",
-    libraryId: "2",
-    name: "Games",
-  },
-  {
-    id: "c10",
-    libraryId: "2",
-    name: "Movies",
-  },
-];
-
 export default function CollectionList({
   libraryId,
   selectedCollectionId,
   onSelectCollection,
 }: CollectionListProps) {
-  const collections = sampleCollections.filter(
-    (collection) => collection.libraryId === libraryId,
-  );
+  const [collections, setCollections] = useState<Collection[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadCollections() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/collections?libraryId=${libraryId}`);
+
+        if (!response.ok) {
+          throw new Error("Unable to load collections.");
+        }
+
+        const data: Collection[] = await response.json();
+
+        setCollections(data);
+      } catch (err) {
+        console.error(err);
+
+        setError("Unable to load collections.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadCollections();
+  }, [libraryId]);
+
+  if (loading) {
+    return <p className="library-placeholder">Loading collections...</p>;
+  }
+
+  if (error) {
+    return <p className="sidebar-error">{error}</p>;
+  }
 
   if (collections.length === 0) {
     return <p className="library-placeholder">No collections yet.</p>;
