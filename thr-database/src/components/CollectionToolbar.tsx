@@ -7,6 +7,8 @@ type CollectionToolbarProps = {
   onViewModeChange: (mode: ViewMode) => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  onCreateRecord: () => void;
+  creatingRecord?: boolean;
 };
 
 export default function CollectionToolbar({
@@ -14,12 +16,19 @@ export default function CollectionToolbar({
   onViewModeChange,
   searchQuery,
   onSearchChange,
+  onCreateRecord,
+  creatingRecord = false,
 }: CollectionToolbarProps) {
   return (
     <div className="collection-toolbar">
       <div className="collection-toolbar-left">
-        <button type="button" className="button primary">
-          + Record
+        <button
+          type="button"
+          className="button primary"
+          onClick={onCreateRecord}
+          disabled={creatingRecord}
+        >
+          {creatingRecord ? "Creating..." : "+ Record"}
         </button>
 
         <div className="view-switcher">

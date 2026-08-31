@@ -39,7 +39,10 @@ export async function GET(request: NextRequest) {
         updated_at
       FROM records
       WHERE collection_id = $1
-      ORDER BY created_at DESC;
+      ORDER BY
+        import_order ASC NULLS LAST,
+        created_at ASC,
+        id ASC;
       `,
       [collectionId],
     );

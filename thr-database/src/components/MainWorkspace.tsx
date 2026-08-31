@@ -32,6 +32,10 @@ export default function MainWorkspace({
     string | undefined
   >();
 
+  const [recordRefreshKey, setRecordRefreshKey] = useState(0);
+
+  const [creatingRecord, setCreatingRecord] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -75,6 +79,57 @@ export default function MainWorkspace({
       controller.abort();
     };
   }, [selectedCollectionId]);
+
+  async function handleCreateRecord() {
+    if (!collection) {
+      return;
+    }
+
+    try {
+      setCreatingRecord(true);
+      setError(null);
+
+      const response = await fetch("/api/records", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          collectionId: collection.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to create record.");
+      }
+
+      const newRecord = await response.json();
+
+      setSelectedRecordId(newRecord.id);
+
+      setRecordRefreshKey((current) => current + 1);
+
+      setViewMode("form");
+    } catch (err) {
+      console.error(err);
+
+      setError("Unable to create record.");
+    } finally {
+      setCreatingRecord(false);
+    }
+  }
+
+  function handleRecordSaved() {
+    setRecordRefreshKey((current) => current + 1);
+  }
+
+  function handleRecordDeleted() {
+    setSelectedRecordId(undefined);
+
+    setRecordRefreshKey((current) => current + 1);
+
+    setViewMode("table");
+  }
 
   if (!selectedCollectionId) {
     return (
@@ -126,38 +181,31 @@ export default function MainWorkspace({
           onViewModeChange={setViewMode}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onCreateRecord={handleCreateRecord}
+          creatingRecord={creatingRecord}
         />
 
         <div className="workspace-content">
           {viewMode === "table" ? (
-            <>
-              <RecordList
-                collectionId={collection.id}
-                searchQuery={searchQuery}
-                selectedRecordId={selectedRecordId}
-                onSelectRecord={setSelectedRecordId}
-              />
-
-              {selectedRecordId && (
-                <p className="selected-record-note">
-                  Selected record: <strong>{selectedRecordId}</strong>
-                </p>
-              )}
-            </>
+            <RecordList
+              collectionId={collection.id}
+              searchQuery={searchQuery}
+              selectedRecordId={selectedRecordId}
+              onSelectRecord={setSelectedRecordId}
+              refreshKey={recordRefreshKey}
+            />
+          ) : selectedRecordId ? (
+            <RecordForm
+              recordId={selectedRecordId}
+              onSaved={handleRecordSaved}
+              onDeleted={handleRecordDeleted}
+            />
           ) : (
-            <>
-              {selectedRecordId ? (
-                <RecordForm recordId={selectedRecordId} />
-              ) : (
-                <div className="form-view-placeholder">
-                  <h3>Form View</h3>
+            <div className="form-view-placeholder">
+              <h3>Form View</h3>
 
-                  <p>
-                    Select a record in Table View, then switch to Form View.
-                  </p>
-                </div>
-              )}
-            </>
+              <p>Select a record in Table View, then switch to Form View.</p>
+            </div>
           )}
         </div>
       </div>

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         SELECT
           id,
           collection_id,
+          import_order,
           created_at,
           updated_at
         FROM records
@@ -202,5 +203,47 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     );
   } finally {
     client.release();
+  }
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+
+    const result = await pool.query(
+      `
+        DELETE FROM records
+        WHERE id = $1
+        RETURNING id;
+        `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Record not found.",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      recordId: id,
+    });
+  } catch (error) {
+    console.error("Delete record error:", error);
+
+    return NextResponse.json(
+      {
+        error: "Unable to delete record.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }

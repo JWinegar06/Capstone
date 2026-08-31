@@ -27,6 +27,7 @@ type RecordListProps = {
   searchQuery: string;
   selectedRecordId?: string;
   onSelectRecord: (recordId: string) => void;
+  refreshKey: number;
 };
 
 export default function RecordList({
@@ -34,6 +35,7 @@ export default function RecordList({
   searchQuery,
   selectedRecordId,
   onSelectRecord,
+  refreshKey,
 }: RecordListProps) {
   const [data, setData] = useState<RecordsResponse | null>(null);
 
@@ -75,7 +77,7 @@ export default function RecordList({
     return () => {
       controller.abort();
     };
-  }, [collectionId]);
+  }, [collectionId, refreshKey]);
 
   const filteredRecords = useMemo(() => {
     if (!data) {

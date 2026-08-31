@@ -862,3 +862,24 @@ button.primary:hover {
   color: #756b5d;
   font-size: 12px;
 }
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.button.danger {
+  border: 1px solid #7e3530;
+  background: #8b3f38;
+  color: #fff;
+}
+
+.button.danger:hover {
+  background: #74322d;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

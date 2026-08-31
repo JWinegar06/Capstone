@@ -28,9 +28,11 @@ type RecordDetailResponse = {
 
 type RecordFormProps = {
   recordId: string;
+  onSaved?: () => void;
+  onDeleted?: () => void;
 };
 
-export default function RecordForm({ recordId }: RecordFormProps) {
+export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordFormProps) {
   const [data, setData] = useState<RecordDetailResponse | null>(null);
 
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
@@ -109,6 +111,7 @@ export default function RecordForm({ recordId }: RecordFormProps) {
       }
 
       setSaved(true);
+      onSaved?.();
     } catch (err) {
       console.error(err);
 
