@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import CollectionToolbar from "./CollectionToolbar";
 import RecordList from "./RecordList";
 import RecordForm from "./RecordForm";
@@ -42,6 +43,10 @@ export default function MainWorkspace({
     if (!selectedCollectionId) {
       return;
     }
+
+    setSelectedRecordId(undefined);
+    setViewMode("table");
+    setSearchQuery("");
 
     const controller = new AbortController();
 
@@ -87,13 +92,16 @@ export default function MainWorkspace({
 
     try {
       setCreatingRecord(true);
+
       setError(null);
 
       const response = await fetch("/api/records", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify({
           collectionId: collection.id,
         }),
@@ -187,13 +195,21 @@ export default function MainWorkspace({
 
         <div className="workspace-content">
           {viewMode === "table" ? (
-            <RecordList
-              collectionId={collection.id}
-              searchQuery={searchQuery}
-              selectedRecordId={selectedRecordId}
-              onSelectRecord={setSelectedRecordId}
-              refreshKey={recordRefreshKey}
-            />
+            <>
+              <RecordList
+                collectionId={collection.id}
+                searchQuery={searchQuery}
+                selectedRecordId={selectedRecordId}
+                onSelectRecord={setSelectedRecordId}
+                refreshKey={recordRefreshKey}
+              />
+
+              {selectedRecordId && (
+                <p className="selected-record-note">
+                  Selected record: <strong>{selectedRecordId}</strong>
+                </p>
+              )}
+            </>
           ) : selectedRecordId ? (
             <RecordForm
               recordId={selectedRecordId}

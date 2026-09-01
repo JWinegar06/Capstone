@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import pool from "@/lib/db";
 
 type RouteContext = {
@@ -13,17 +14,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const result = await pool.query(
       `
-      SELECT
-        id,
-        library_id,
-        name,
-        description,
-        display_order,
-        created_at,
-        updated_at
-      FROM collections
-      WHERE id = $1;
-      `,
+        SELECT
+          id,
+          library_id,
+          name,
+          description,
+          display_order,
+          created_at,
+          updated_at
+        FROM collections
+        WHERE id = $1;
+        `,
       [id],
     );
 

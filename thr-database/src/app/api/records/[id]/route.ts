@@ -143,12 +143,13 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     for (const [fieldId, value] of Object.entries(values)) {
       await client.query(
         `
-        INSERT INTO record_values (
-          record_id,
-          field_id,
-          value,
-          updated_at
-        )
+        INSERT INTO
+          record_values (
+            record_id,
+            field_id,
+            value,
+            updated_at
+          )
         VALUES (
           $1,
           $2,
@@ -172,7 +173,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     await client.query(
       `
       UPDATE records
-      SET updated_at = NOW()
+      SET updated_at =
+        NOW()
       WHERE id = $1;
       `,
       [id],
@@ -207,19 +209,27 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  const client = await pool.connect();
+
   try {
     const { id } = await context.params;
 
-    const result = await pool.query(
+    console.log("Deleting record:", id);
+
+    await client.query("BEGIN");
+
+    const recordCheck = await client.query(
       `
-        DELETE FROM records
-        WHERE id = $1
-        RETURNING id;
+        SELECT id
+        FROM records
+        WHERE id = $1;
         `,
       [id],
     );
 
-    if (result.rows.length === 0) {
+    if (recordCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+
       return NextResponse.json(
         {
           error: "Record not found.",
@@ -230,20 +240,44 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const result = await client.query(
+      `
+        DELETE FROM records
+        WHERE id = $1
+        RETURNING id;
+        `,
+      [id],
+    );
+
+    await client.query("COMMIT");
+
+    console.log("Deleted record:", result.rows[0].id);
+
     return NextResponse.json({
       success: true,
-      recordId: id,
+      recordId: result.rows[0].id,
     });
   } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Delete rollback error:", rollbackError);
+    }
+
     console.error("Delete record error:", error);
 
     return NextResponse.json(
       {
         error: "Unable to delete record.",
+
+        details:
+          error instanceof Error ? error.message : "Unknown database error.",
       },
       {
         status: 500,
       },
     );
+  } finally {
+    client.release();
   }
 }

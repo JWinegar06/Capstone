@@ -4,10 +4,15 @@ type ViewMode = "table" | "form";
 
 type CollectionToolbarProps = {
   viewMode: ViewMode;
+
   onViewModeChange: (mode: ViewMode) => void;
+
   searchQuery: string;
+
   onSearchChange: (value: string) => void;
+
   onCreateRecord: () => void;
+
   creatingRecord?: boolean;
 };
 

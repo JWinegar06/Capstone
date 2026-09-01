@@ -12,8 +12,10 @@ type Field = {
 type RecordItem = {
   id: string;
   collection_id: string;
+  import_order?: number | null;
   created_at: string;
   updated_at: string;
+
   values: Record<string, unknown>;
 };
 
@@ -24,9 +26,13 @@ type RecordsResponse = {
 
 type RecordListProps = {
   collectionId: string;
+
   searchQuery: string;
+
   selectedRecordId?: string;
+
   onSelectRecord: (recordId: string) => void;
+
   refreshKey: number;
 };
 
@@ -74,9 +80,7 @@ export default function RecordList({
 
     loadRecords();
 
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [collectionId, refreshKey]);
 
   const filteredRecords = useMemo(() => {
@@ -137,23 +141,21 @@ export default function RecordList({
           </thead>
 
           <tbody>
-            {filteredRecords.map((record) => {
-              const isSelected = record.id === selectedRecordId;
-
-              return (
-                <tr
-                  key={record.id}
-                  className={isSelected ? "selected-record" : ""}
-                  onClick={() => onSelectRecord(record.id)}
-                >
-                  {data.fields.map((field) => (
-                    <td key={field.id}>
-                      {formatValue(record.values[field.id], field.field_type)}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+            {filteredRecords.map((record) => (
+              <tr
+                key={record.id}
+                className={
+                  record.id === selectedRecordId ? "selected-record" : ""
+                }
+                onClick={() => onSelectRecord(record.id)}
+              >
+                {data.fields.map((field) => (
+                  <td key={field.id}>
+                    {formatValue(record.values[field.id], field.field_type)}
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -171,18 +173,14 @@ function formatValue(value: unknown, fieldType: string) {
   }
 
   if (fieldType === "checkbox") {
-    return value === true || value === "true" ? "Yes" : "No";
+    return value ? "Yes" : "No";
   }
 
-  if (fieldType === "currency") {
-    const numberValue = Number(value);
-
-    if (!Number.isNaN(numberValue)) {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(numberValue);
-    }
+  if (fieldType === "currency" && typeof value === "number") {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(value);
   }
 
   if (fieldType === "date") {

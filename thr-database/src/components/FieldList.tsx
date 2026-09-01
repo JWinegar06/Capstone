@@ -4,11 +4,8 @@ import { useEffect, useState } from "react";
 
 type Field = {
   id: string;
-  collection_id: string;
   name: string;
   field_type: string;
-  required: boolean;
-  display_order: number;
 };
 
 type FieldListProps = {
@@ -18,24 +15,20 @@ type FieldListProps = {
 export default function FieldList({ collectionId }: FieldListProps) {
   const [fields, setFields] = useState<Field[]>([]);
 
-  const [loading, setLoading] = useState(false);
-
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!collectionId) {
-      setFields([]);
-      setError(null);
       return;
     }
 
+    const controller = new AbortController();
+
     async function loadFields() {
       try {
-        setLoading(true);
-        setError(null);
-
         const response = await fetch(
           `/api/fields?collectionId=${collectionId}`,
+          {
+            signal: controller.signal,
+          },
         );
 
         if (!response.ok) {
@@ -46,44 +39,36 @@ export default function FieldList({ collectionId }: FieldListProps) {
 
         setFields(data);
       } catch (err) {
-        console.error(err);
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
 
-        setError("Unable to load fields.");
-      } finally {
-        setLoading(false);
+        console.error(err);
       }
     }
 
     loadFields();
+
+    return () => controller.abort();
   }, [collectionId]);
 
   if (!collectionId) {
-    return (
-      <p className="sidebar-empty">Select a collection to view its fields.</p>
-    );
-  }
-
-  if (loading) {
-    return <p className="sidebar-empty">Loading fields...</p>;
-  }
-
-  if (error) {
-    return <p className="sidebar-error">{error}</p>;
-  }
-
-  if (fields.length === 0) {
-    return <p className="sidebar-empty">No fields have been created yet.</p>;
+    return null;
   }
 
   return (
-    <ul className="field-list">
-      {fields.map((field) => (
-        <li key={field.id} className="field-item">
-          <span className="field-name">{field.name}</span>
+    <div className="sidebar-section">
+      <h3 className="sidebar-heading">Fields</h3>
 
-          <span className="field-type">{field.field_type}</span>
-        </li>
-      ))}
-    </ul>
+      <div className="field-list">
+        {fields.map((field) => (
+          <div key={field.id} className="field-item">
+            <span>{field.name}</span>
+
+            <small>{field.field_type}</small>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

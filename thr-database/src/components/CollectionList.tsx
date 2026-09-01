@@ -11,9 +11,11 @@ type Collection = {
 };
 
 type CollectionListProps = {
-  libraryId: string;
+  libraryId?: string;
+
   selectedCollectionId?: string;
-  onSelectCollection?: (collectionId: string) => void;
+
+  onSelectCollection: (id: string) => void;
 };
 
 export default function CollectionList({
@@ -23,17 +25,23 @@ export default function CollectionList({
 }: CollectionListProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
 
-  const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!libraryId) {
+      return;
+    }
+
+    const controller = new AbortController();
+
     async function loadCollections() {
       try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch(`/api/collections?libraryId=${libraryId}`);
+        const response = await fetch(
+          `/api/collections?libraryId=${libraryId}`,
+          {
+            signal: controller.signal,
+          },
+        );
 
         if (!response.ok) {
           throw new Error("Unable to load collections.");
@@ -42,47 +50,51 @@ export default function CollectionList({
         const data: Collection[] = await response.json();
 
         setCollections(data);
+        setError(null);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+
         console.error(err);
 
         setError("Unable to load collections.");
-      } finally {
-        setLoading(false);
       }
     }
 
     loadCollections();
+
+    return () => controller.abort();
   }, [libraryId]);
 
-  if (loading) {
-    return <p className="library-placeholder">Loading collections...</p>;
+  if (!libraryId) {
+    return null;
   }
 
   if (error) {
     return <p className="sidebar-error">{error}</p>;
   }
 
-  if (collections.length === 0) {
-    return <p className="library-placeholder">No collections yet.</p>;
-  }
-
   return (
-    <ul className="collection-list">
-      {collections.map((collection) => {
-        const isSelected = collection.id === selectedCollectionId;
+    <div className="sidebar-section">
+      <h3 className="sidebar-heading">Collections</h3>
 
-        return (
-          <li key={collection.id}>
-            <button
-              type="button"
-              className={`collection-button ${isSelected ? "active" : ""}`}
-              onClick={() => onSelectCollection?.(collection.id)}
-            >
-              {collection.name}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+      <div className="sidebar-list">
+        {collections.map((collection) => (
+          <button
+            key={collection.id}
+            type="button"
+            className={
+              collection.id === selectedCollectionId
+                ? "sidebar-item active"
+                : "sidebar-item"
+            }
+            onClick={() => onSelectCollection(collection.id)}
+          >
+            {collection.name}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

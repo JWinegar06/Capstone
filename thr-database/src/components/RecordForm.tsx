@@ -16,6 +16,7 @@ type Field = {
 type RecordItem = {
   id: string;
   collection_id: string;
+  import_order?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -23,6 +24,7 @@ type RecordItem = {
 type RecordDetailResponse = {
   record: RecordItem;
   fields: Field[];
+
   values: Record<string, unknown>;
 };
 
@@ -32,7 +34,11 @@ type RecordFormProps = {
   onDeleted?: () => void;
 };
 
-export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordFormProps) {
+export default function RecordForm({
+  recordId,
+  onSaved,
+  onDeleted,
+}: RecordFormProps) {
   const [data, setData] = useState<RecordDetailResponse | null>(null);
 
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
@@ -40,6 +46,8 @@ export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordForm
   const [error, setError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
+
+  const [deleting, setDeleting] = useState(false);
 
   const [saved, setSaved] = useState(false);
 
@@ -59,8 +67,11 @@ export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordForm
         const result: RecordDetailResponse = await response.json();
 
         setData(result);
+
         setFormValues(result.values);
+
         setError(null);
+        setSaved(false);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
           return;
@@ -84,6 +95,7 @@ export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordForm
 
     setFormValues((current) => ({
       ...current,
+
       [fieldId]: value,
     }));
   }
@@ -98,9 +110,11 @@ export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordForm
 
       const response = await fetch(`/api/records/${recordId}`, {
         method: "PUT",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify({
           values: formValues,
         }),
@@ -111,13 +125,63 @@ export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordForm
       }
 
       setSaved(true);
+
       onSaved?.();
     } catch (err) {
       console.error(err);
 
-      setError("Unable to save changes.");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Unable to save changes.");
+      }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this record? This cannot be undone.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError(null);
+
+      const response = await fetch(`/api/records/${recordId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        let message = "Unable to delete record.";
+
+        try {
+          const errorData = await response.json();
+
+          message = errorData.details || errorData.error || message;
+        } catch {
+          // Keep fallback
+        }
+
+        throw new Error(message);
+      }
+
+      onDeleted?.();
+    } catch (err) {
+      console.error(err);
+
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Unable to delete record.");
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -148,8 +212,21 @@ export default function RecordForm({ recordId, onSaved, onDeleted, }: RecordForm
       {saved && <p className="save-success">Changes saved successfully.</p>}
 
       <div className="form-actions">
-        <button type="submit" className="button primary" disabled={saving}>
+        <button
+          type="submit"
+          className="button primary"
+          disabled={saving || deleting}
+        >
           {saving ? "Saving..." : "Save Changes"}
+        </button>
+
+        <button
+          type="button"
+          className="button danger"
+          onClick={handleDelete}
+          disabled={saving || deleting}
+        >
+          {deleting ? "Deleting..." : "Delete Record"}
         </button>
       </div>
     </form>
@@ -187,6 +264,7 @@ function renderField(
           onChange={(event) =>
             updateValue(
               field.id,
+
               event.target.value === "" ? null : Number(event.target.value),
             )
           }
@@ -205,6 +283,7 @@ function renderField(
           onChange={(event) =>
             updateValue(
               field.id,
+
               event.target.value === "" ? null : Number(event.target.value),
             )
           }
