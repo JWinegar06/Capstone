@@ -24,7 +24,6 @@ type RecordItem = {
 type RecordDetailResponse = {
   record: RecordItem;
   fields: Field[];
-
   values: Record<string, unknown>;
 };
 
@@ -32,16 +31,34 @@ type RecordFormProps = {
   recordId: string;
   onSaved?: () => void;
   onDeleted?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
+  recordPosition?: number;
+  recordCount?: number;
 };
 
 export default function RecordForm({
   recordId,
   onSaved,
   onDeleted,
+  onDirtyChange,
+  onPrevious,
+  onNext,
+  hasPrevious = false,
+  hasNext = false,
+  recordPosition,
+  recordCount,
 }: RecordFormProps) {
   const [data, setData] = useState<RecordDetailResponse | null>(null);
 
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
+
+  const [originalValues, setOriginalValues] = useState<Record<string, unknown>>(
+    {},
+  );
 
   const [error, setError] = useState<string | null>(null);
 
@@ -51,24 +68,74 @@ export default function RecordForm({
 
   const [saved, setSaved] = useState(false);
 
+  /*
+   * Compare the editable values
+   * against the last saved values.
+   */
+  const hasUnsavedChanges =
+    JSON.stringify(formValues) !== JSON.stringify(originalValues);
+
+  const recordTitle = getRecordTitle(data?.fields ?? [], formValues);
+
+  const recordSubtitle = getRecordSubtitle(
+    data?.fields ?? [],
+    formValues,
+    recordTitle.fieldId,
+  );  
+
+  /*
+   * Tell MainWorkspace whether
+   * this form has unsaved changes.
+   */
+  useEffect(() => {
+    onDirtyChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyChange]);
+
+  /*
+   * Load the selected record.
+   */
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadRecord() {
       try {
+        setError(null);
+        setSaved(false);
+
         const response = await fetch(`/api/records/${recordId}`, {
           signal: controller.signal,
         });
 
         if (!response.ok) {
-          throw new Error("Unable to load record.");
+          let message = "Unable to load record.";
+
+          try {
+            const errorData = await response.json();
+
+            message = errorData.details || errorData.error || message;
+          } catch {
+            // Keep fallback message.
+          }
+
+          throw new Error(message);
         }
 
         const result: RecordDetailResponse = await response.json();
 
         setData(result);
 
-        setFormValues(result.values);
+        /*
+         * Make separate objects
+         * for the editable values
+         * and the saved baseline.
+         */
+        setFormValues({
+          ...result.values,
+        });
+
+        setOriginalValues({
+          ...result.values,
+        });
 
         setError(null);
         setSaved(false);
@@ -79,7 +146,11 @@ export default function RecordForm({
 
         console.error(err);
 
-        setError("Unable to load record.");
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Unable to load record.");
+        }
       }
     }
 
@@ -90,18 +161,32 @@ export default function RecordForm({
     };
   }, [recordId]);
 
+  /*
+   * Change one field in the
+   * editable form state.
+   */
   function updateValue(fieldId: string, value: unknown) {
     setSaved(false);
 
     setFormValues((current) => ({
       ...current,
-
       [fieldId]: value,
     }));
   }
 
+  /*
+   * Save changes.
+   */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    /*
+     * Nothing changed, so there
+     * is nothing to save.
+     */
+    if (!hasUnsavedChanges) {
+      return;
+    }
 
     try {
       setSaving(true);
@@ -120,11 +205,42 @@ export default function RecordForm({
         }),
       });
 
+      /*
+       * Handle required-field
+       * validation and API errors.
+       */
       if (!response.ok) {
-        throw new Error("Unable to save record.");
+        let errorData: {
+          error?: string;
+          details?: string;
+          fields?: string[];
+        } = {};
+
+        try {
+          errorData = await response.json();
+        } catch {
+          // Keep fallback below.
+        }
+
+        if (Array.isArray(errorData.fields) && errorData.fields.length > 0) {
+          throw new Error(`Required fields: ${errorData.fields.join(", ")}`);
+        }
+
+        throw new Error(
+          errorData.details || errorData.error || "Unable to save record.",
+        );
       }
 
+      /*
+       * The current form values
+       * are now the saved baseline.
+       */
+      setOriginalValues({
+        ...formValues,
+      });
+
       setSaved(true);
+      setError(null);
 
       onSaved?.();
     } catch (err) {
@@ -140,7 +256,40 @@ export default function RecordForm({
     }
   }
 
+  /*
+   * Restore the last saved values.
+   */
+  function handleCancelChanges() {
+    setFormValues({
+      ...originalValues,
+    });
+
+    setSaved(false);
+    setError(null);
+  }
+
+  /*
+   * Delete the current record.
+   */
   async function handleDelete() {
+    /*
+     * Warn separately when the
+     * form currently has edits.
+     */
+    if (hasUnsavedChanges) {
+      const discardConfirmed = window.confirm(
+        "This record has unsaved changes. Delete the record anyway?",
+      );
+
+      if (!discardConfirmed) {
+        return;
+      }
+    }
+
+    /*
+     * Final permanent deletion
+     * confirmation.
+     */
     const confirmed = window.confirm(
       "Are you sure you want to delete this record? This cannot be undone.",
     );
@@ -165,11 +314,18 @@ export default function RecordForm({
 
           message = errorData.details || errorData.error || message;
         } catch {
-          // Keep fallback
+          // Keep fallback message.
         }
 
         throw new Error(message);
       }
+
+      /*
+       * Tell the parent that the
+       * form is no longer dirty
+       * before removing the record.
+       */
+      onDirtyChange?.(false);
 
       onDeleted?.();
     } catch (err) {
@@ -185,6 +341,9 @@ export default function RecordForm({
     }
   }
 
+  /*
+   * Initial loading/error state.
+   */
   if (error && !data) {
     return <p className="workspace-error">{error}</p>;
   }
@@ -195,6 +354,13 @@ export default function RecordForm({
 
   return (
     <form className="record-form" onSubmit={handleSubmit}>
+      {/* Required field explanation */}
+      <p className="required-note">
+        Fields marked with <span className="required-mark">*</span> are
+        required.
+      </p>
+
+      {/* Dynamic database fields */}
       {data.fields.map((field) => (
         <div key={field.id} className="form-field">
           <label htmlFor={field.id}>
@@ -207,17 +373,32 @@ export default function RecordForm({
         </div>
       ))}
 
+      {/* API / validation error */}
       {error && <p className="workspace-error">{error}</p>}
 
+      {/* Successful save */}
       {saved && <p className="save-success">Changes saved successfully.</p>}
 
+      {/* Unsaved change indicator */}
+      {hasUnsavedChanges && <p className="unsaved-warning">Unsaved changes</p>}
+
+      {/* Form buttons */}
       <div className="form-actions">
         <button
           type="submit"
           className="button primary"
-          disabled={saving || deleting}
+          disabled={saving || deleting || !hasUnsavedChanges}
         >
           {saving ? "Saving..." : "Save Changes"}
+        </button>
+
+        <button
+          type="button"
+          className="button"
+          onClick={handleCancelChanges}
+          disabled={saving || deleting || !hasUnsavedChanges}
+        >
+          Cancel Changes
         </button>
 
         <button
@@ -229,10 +410,48 @@ export default function RecordForm({
           {deleting ? "Deleting..." : "Delete Record"}
         </button>
       </div>
+      <div className="record-form-header">
+        <div>
+          <h3 className="record-form-title">{recordTitle.value}</h3>
+
+          {recordSubtitle && (
+            <p className="record-form-subtitle">{recordSubtitle}</p>
+          )}
+        </div>
+      </div>
+      <div className="record-navigation">
+        <button
+          type="button"
+          className="button"
+          onClick={onPrevious}
+          disabled={!hasPrevious || saving || deleting}
+        >
+          ← Previous
+        </button>
+
+        <span className="record-position">
+          {recordPosition && recordCount
+            ? `Record ${recordPosition} of ${recordCount}`
+            : ""}
+        </span>
+
+        <button
+          type="button"
+          className="button"
+          onClick={onNext}
+          disabled={!hasNext || saving || deleting}
+        >
+          Next →
+        </button>
+      </div>
     </form>
   );
 }
 
+/*
+ * Render the correct input
+ * based on field_type.
+ */
 function renderField(
   field: Field,
   value: unknown,
@@ -242,6 +461,9 @@ function renderField(
     value === null || value === undefined ? "" : String(value);
 
   switch (field.field_type) {
+    /*
+     * Long text / notes
+     */
     case "long_text":
       return (
         <textarea
@@ -253,6 +475,9 @@ function renderField(
         />
       );
 
+    /*
+     * Number
+     */
     case "number":
       return (
         <input
@@ -264,13 +489,15 @@ function renderField(
           onChange={(event) =>
             updateValue(
               field.id,
-
               event.target.value === "" ? null : Number(event.target.value),
             )
           }
         />
       );
 
+    /*
+     * Currency
+     */
     case "currency":
       return (
         <input
@@ -283,13 +510,15 @@ function renderField(
           onChange={(event) =>
             updateValue(
               field.id,
-
               event.target.value === "" ? null : Number(event.target.value),
             )
           }
         />
       );
 
+    /*
+     * Date
+     */
     case "date":
       return (
         <input
@@ -302,6 +531,9 @@ function renderField(
         />
       );
 
+    /*
+     * Checkbox
+     */
     case "checkbox":
       return (
         <input
@@ -313,6 +545,9 @@ function renderField(
         />
       );
 
+    /*
+     * Dropdown
+     */
     case "dropdown": {
       const options = getDropdownOptions(field.options);
 
@@ -335,6 +570,12 @@ function renderField(
       );
     }
 
+    /*
+     * Image
+     *
+     * Actual upload support
+     * comes later.
+     */
     case "image":
       return (
         <div className="image-field-placeholder">
@@ -342,6 +583,9 @@ function renderField(
         </div>
       );
 
+    /*
+     * Default = text
+     */
     default:
       return (
         <input
@@ -356,10 +600,124 @@ function renderField(
   }
 }
 
+/*
+ * Convert the field's JSON
+ * dropdown options into strings.
+ */
 function getDropdownOptions(options: unknown): string[] {
   if (!Array.isArray(options)) {
     return [];
   }
 
   return options.map((option) => String(option));
+}
+
+function getRecordTitle(
+  fields: Field[],
+  values: Record<string, unknown>,
+): {
+  fieldId?: string;
+  value: string;
+} {
+  const preferredNames = [
+    "company name",
+    "name",
+    "title",
+    "record name",
+    "certificate name",
+  ];
+
+  for (const preferredName of preferredNames) {
+    const field = fields.find(
+      (item) => item.name.trim().toLowerCase() === preferredName,
+    );
+
+    if (!field) {
+      continue;
+    }
+
+    const value = values[field.id];
+
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return {
+        fieldId: field.id,
+
+        value: String(value),
+      };
+    }
+  }
+
+  /*
+   * If no preferred title
+   * field exists, use the
+   * first populated text field.
+   */
+  const fallbackField = fields.find((field) => {
+    const value = values[field.id];
+
+    return (
+      value !== null &&
+      value !== undefined &&
+      String(value).trim() !== "" &&
+      (field.field_type === "text" || field.field_type === "long_text")
+    );
+  });
+
+  if (fallbackField) {
+    return {
+      fieldId: fallbackField.id,
+
+      value: String(values[fallbackField.id]),
+    };
+  }
+
+  return {
+    value: "Untitled Record",
+  };
+}
+
+function getRecordSubtitle(
+  fields: Field[],
+  values: Record<string, unknown>,
+  titleFieldId?: string,
+): string | null {
+  const preferredNames = [
+    "cert number",
+    "certificate number",
+    "cert #",
+    "certificate #",
+    "issue year",
+  ];
+
+  for (const preferredName of preferredNames) {
+    const field = fields.find(
+      (item) =>
+        item.id !== titleFieldId &&
+        item.name.trim().toLowerCase() === preferredName,
+    );
+
+    if (!field) {
+      continue;
+    }
+
+    const value = values[field.id];
+
+    if (value === null || value === undefined || String(value).trim() === "") {
+      continue;
+    }
+
+    const lowerName = field.name.trim().toLowerCase();
+
+    if (lowerName.includes("cert")) {
+      return `Certificate ${String(value)}`;
+    }
+
+    if (lowerName.includes("year")) {
+      return `Issue Year ${String(value)}`;
+    }
+
+    return String(value);
+  }
+
+  return null;
 }

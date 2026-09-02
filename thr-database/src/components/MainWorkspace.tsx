@@ -18,10 +18,13 @@ type Collection = {
 
 type MainWorkspaceProps = {
   selectedCollectionId?: string;
+
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
 export default function MainWorkspace({
   selectedCollectionId,
+  onDirtyChange,
 }: MainWorkspaceProps) {
   const [collection, setCollection] = useState<Collection | null>(null);
 
@@ -33,20 +36,40 @@ export default function MainWorkspace({
     string | undefined
   >();
 
+  const [recordIds, setRecordIds] = useState<string[]>([]);
+
   const [recordRefreshKey, setRecordRefreshKey] = useState(0);
 
   const [creatingRecord, setCreatingRecord] = useState(false);
 
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
+  /*
+   * Determine current position
+   * in the collection.
+   */
+  const selectedRecordIndex = selectedRecordId
+    ? recordIds.indexOf(selectedRecordId)
+    : -1;
+
+  const hasPreviousRecord = selectedRecordIndex > 0;
+
+  const hasNextRecord =
+    selectedRecordIndex >= 0 && selectedRecordIndex < recordIds.length - 1;
+
+  /*
+   * Load selected collection.
+   *
+   * AppShell remounts this
+   * component when the collection
+   * changes by using a key.
+   */
   useEffect(() => {
     if (!selectedCollectionId) {
       return;
     }
-
-    setSelectedRecordId(undefined);
-    setViewMode("table");
-    setSearchQuery("");
 
     const controller = new AbortController();
 
@@ -66,6 +89,7 @@ export default function MainWorkspace({
         const data: Collection = await response.json();
 
         setCollection(data);
+
         setError(null);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
@@ -85,8 +109,129 @@ export default function MainWorkspace({
     };
   }, [selectedCollectionId]);
 
+  /*
+   * Warn before abandoning
+   * unsaved form changes.
+   */
+  function confirmDiscardChanges() {
+    if (!hasUnsavedChanges) {
+      return true;
+    }
+
+    return window.confirm(
+      "You have unsaved changes. Leave without saving them?",
+    );
+  }
+
+  /*
+   * Receive dirty-state changes
+   * from RecordForm.
+   */
+  function handleDirtyChange(isDirty: boolean) {
+    setHasUnsavedChanges(isDirty);
+
+    onDirtyChange?.(isDirty);
+  }
+
+  /*
+   * Switch Table / Form View.
+   */
+  function handleViewModeChange(mode: ViewMode) {
+    if (mode === viewMode) {
+      return;
+    }
+
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
+    setHasUnsavedChanges(false);
+
+    onDirtyChange?.(false);
+
+    setViewMode(mode);
+  }
+
+  /*
+   * Select a table record.
+   */
+  function handleSelectRecord(recordId: string) {
+    if (recordId === selectedRecordId) {
+      return;
+    }
+
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
+    setHasUnsavedChanges(false);
+
+    onDirtyChange?.(false);
+
+    setSelectedRecordId(recordId);
+  }
+
+  /*
+   * Move to previous record
+   * while keeping permanent
+   * collection order.
+   */
+  function handlePreviousRecord() {
+    if (!hasPreviousRecord) {
+      return;
+    }
+
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
+    const previousRecordId = recordIds[selectedRecordIndex - 1];
+
+    if (!previousRecordId) {
+      return;
+    }
+
+    setHasUnsavedChanges(false);
+
+    onDirtyChange?.(false);
+
+    setSelectedRecordId(previousRecordId);
+  }
+
+  /*
+   * Move to next record.
+   */
+  function handleNextRecord() {
+    if (!hasNextRecord) {
+      return;
+    }
+
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
+    const nextRecordId = recordIds[selectedRecordIndex + 1];
+
+    if (!nextRecordId) {
+      return;
+    }
+
+    setHasUnsavedChanges(false);
+
+    onDirtyChange?.(false);
+
+    setSelectedRecordId(nextRecordId);
+  }
+
+  /*
+   * Create a new record.
+   */
   async function handleCreateRecord() {
     if (!collection) {
+      return;
+    }
+
+    if (!confirmDiscardChanges()) {
       return;
     }
 
@@ -108,10 +253,24 @@ export default function MainWorkspace({
       });
 
       if (!response.ok) {
-        throw new Error("Unable to create record.");
+        let message = "Unable to create record.";
+
+        try {
+          const errorData = await response.json();
+
+          message = errorData.details || errorData.error || message;
+        } catch {
+          // Keep fallback.
+        }
+
+        throw new Error(message);
       }
 
       const newRecord = await response.json();
+
+      setHasUnsavedChanges(false);
+
+      onDirtyChange?.(false);
 
       setSelectedRecordId(newRecord.id);
 
@@ -121,17 +280,35 @@ export default function MainWorkspace({
     } catch (err) {
       console.error(err);
 
-      setError("Unable to create record.");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Unable to create record.");
+      }
     } finally {
       setCreatingRecord(false);
     }
   }
 
+  /*
+   * Refresh table after save.
+   */
   function handleRecordSaved() {
+    setHasUnsavedChanges(false);
+
+    onDirtyChange?.(false);
+
     setRecordRefreshKey((current) => current + 1);
   }
 
+  /*
+   * Clean up after deletion.
+   */
   function handleRecordDeleted() {
+    setHasUnsavedChanges(false);
+
+    onDirtyChange?.(false);
+
     setSelectedRecordId(undefined);
 
     setRecordRefreshKey((current) => current + 1);
@@ -139,6 +316,9 @@ export default function MainWorkspace({
     setViewMode("table");
   }
 
+  /*
+   * No collection selected.
+   */
   if (!selectedCollectionId) {
     return (
       <main className="workspace">
@@ -151,6 +331,9 @@ export default function MainWorkspace({
     );
   }
 
+  /*
+   * Collection loading error.
+   */
   if (error) {
     return (
       <main className="workspace">
@@ -161,7 +344,10 @@ export default function MainWorkspace({
     );
   }
 
-  if (!collection || collection.id !== selectedCollectionId) {
+  /*
+   * Loading collection.
+   */
+  if (!collection) {
     return (
       <main className="workspace">
         <div className="content-container">
@@ -174,6 +360,7 @@ export default function MainWorkspace({
   return (
     <main className="workspace">
       <div className="content-container">
+        {/* Collection Header */}
         <div className="collection-header">
           <div>
             <h2 className="collection-title">{collection.name}</h2>
@@ -184,15 +371,17 @@ export default function MainWorkspace({
           </div>
         </div>
 
+        {/* Collection Toolbar */}
         <CollectionToolbar
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onCreateRecord={handleCreateRecord}
           creatingRecord={creatingRecord}
         />
 
+        {/* Main Content */}
         <div className="workspace-content">
           {viewMode === "table" ? (
             <>
@@ -200,8 +389,9 @@ export default function MainWorkspace({
                 collectionId={collection.id}
                 searchQuery={searchQuery}
                 selectedRecordId={selectedRecordId}
-                onSelectRecord={setSelectedRecordId}
+                onSelectRecord={handleSelectRecord}
                 refreshKey={recordRefreshKey}
+                onRecordsLoaded={setRecordIds}
               />
 
               {selectedRecordId && (
@@ -215,6 +405,15 @@ export default function MainWorkspace({
               recordId={selectedRecordId}
               onSaved={handleRecordSaved}
               onDeleted={handleRecordDeleted}
+              onDirtyChange={handleDirtyChange}
+              onPrevious={handlePreviousRecord}
+              onNext={handleNextRecord}
+              hasPrevious={hasPreviousRecord}
+              hasNext={hasNextRecord}
+              recordPosition={
+                selectedRecordIndex >= 0 ? selectedRecordIndex + 1 : undefined
+              }
+              recordCount={recordIds.length}
             />
           ) : (
             <div className="form-view-placeholder">

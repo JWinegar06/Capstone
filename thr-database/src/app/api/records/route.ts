@@ -136,6 +136,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await client.query("BEGIN");
+
     const collectionCheck = await client.query(
       `
         SELECT id
@@ -146,6 +148,8 @@ export async function POST(request: NextRequest) {
     );
 
     if (collectionCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+
       return NextResponse.json(
         {
           error: "Collection not found.",
@@ -155,8 +159,6 @@ export async function POST(request: NextRequest) {
         },
       );
     }
-
-    await client.query("BEGIN");
 
     const orderResult = await client.query(
       `
@@ -193,21 +195,65 @@ export async function POST(request: NextRequest) {
       [collectionId, nextOrder],
     );
 
+    const newRecord = recordResult.rows[0];
+
+    const fieldsResult = await client.query(
+      `
+        SELECT
+          id,
+          field_type,
+          default_value
+        FROM fields
+        WHERE collection_id = $1
+          AND default_value IS NOT NULL
+          AND default_value <> '';
+        `,
+      [collectionId],
+    );
+
+    for (const field of fieldsResult.rows) {
+      const defaultValue = convertDefaultValue(
+        field.default_value,
+        field.field_type,
+      );
+
+      await client.query(
+        `
+        INSERT INTO record_values (
+          record_id,
+          field_id,
+          value
+        )
+        VALUES (
+          $1,
+          $2,
+          $3::jsonb
+        );
+        `,
+        [newRecord.id, field.id, JSON.stringify(defaultValue)],
+      );
+    }
+
     await client.query("COMMIT");
 
-    return NextResponse.json(recordResult.rows[0], {
+    return NextResponse.json(newRecord, {
       status: 201,
     });
   } catch (error) {
     try {
       await client.query("ROLLBACK");
-    } catch {}
+    } catch (rollbackError) {
+      console.error("Create record rollback error:", rollbackError);
+    }
 
     console.error("Create record error:", error);
 
     return NextResponse.json(
       {
         error: "Unable to create record.",
+
+        details:
+          error instanceof Error ? error.message : "Unknown database error.",
       },
       {
         status: 500,
@@ -215,5 +261,29 @@ export async function POST(request: NextRequest) {
     );
   } finally {
     client.release();
+  }
+}
+
+function convertDefaultValue(value: string, fieldType: string): unknown {
+  switch (fieldType) {
+    case "number":
+    case "currency": {
+      const number = Number(value);
+
+      return Number.isNaN(number) ? null : number;
+    }
+
+    case "checkbox":
+      return (
+        value.toLowerCase() === "true" ||
+        value === "1" ||
+        value.toLowerCase() === "yes"
+      );
+
+    case "date":
+      return value;
+
+    default:
+      return value;
   }
 }

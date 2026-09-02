@@ -26,14 +26,12 @@ type RecordsResponse = {
 
 type RecordListProps = {
   collectionId: string;
-
   searchQuery: string;
-
   selectedRecordId?: string;
-
   onSelectRecord: (recordId: string) => void;
-
   refreshKey: number;
+
+  onRecordsLoaded?: (recordIds: string[]) => void;
 };
 
 export default function RecordList({
@@ -42,6 +40,7 @@ export default function RecordList({
   selectedRecordId,
   onSelectRecord,
   refreshKey,
+  onRecordsLoaded,
 }: RecordListProps) {
   const [data, setData] = useState<RecordsResponse | null>(null);
 
@@ -67,6 +66,7 @@ export default function RecordList({
 
         setData(result);
         setError(null);
+        onRecordsLoaded?.(result.records.map((record) => record.id));
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
           return;
@@ -76,12 +76,13 @@ export default function RecordList({
 
         setError("Unable to load records.");
       }
+      
     }
 
     loadRecords();
 
     return () => controller.abort();
-  }, [collectionId, refreshKey]);
+  }, [collectionId, refreshKey, onRecordsLoaded]);
 
   const filteredRecords = useMemo(() => {
     if (!data) {

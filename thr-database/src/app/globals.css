@@ -1573,3 +1573,170 @@ button.primary:hover {
     display: none;
   }
 }
+
+.required-note {
+  margin:
+    0 0 18px;
+
+  color: #766451;
+
+  font-size: 13px;
+}
+
+.required-mark {
+  margin-left: 4px;
+
+  color: #982e2e;
+
+  font-weight: bold;
+}
+
+.unsaved-warning {
+  margin: 12px 0;
+
+  padding: 8px 10px;
+
+  background: #fff4d6;
+
+  border:
+    1px solid #d2b66f;
+
+  color: #6b5423;
+
+  font-size: 13px;
+
+  font-weight: 600;
+}
+
+.required-note {
+  margin: 0 0 18px;
+
+  color: #766451;
+
+  font-size: 13px;
+}
+
+.required-mark {
+  margin-left: 4px;
+
+  color: #982e2e;
+
+  font-weight: bold;
+}
+
+.unsaved-warning {
+  margin: 12px 0;
+
+  padding: 8px 10px;
+
+  background: #fff4d6;
+
+  border: 1px solid #d2b66f;
+
+  color: #6b5423;
+
+  font-size: 13px;
+
+  font-weight: 600;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 22px;
+
+  padding-top: 16px;
+
+  border-top: 1px solid #cbb99b;
+}
+
+.button.danger {
+  background: #8b3f38;
+
+  border: 1px solid #7e3530;
+
+  color: white;
+}
+
+.button.danger:hover {
+  background: #74322d;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.record-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-bottom: 20px;
+
+  padding-bottom: 14px;
+
+  border-bottom:
+    1px solid #cbb99b;
+}
+
+.record-position {
+  color: #6f5d49;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  text-align: center;
+}
+
+@media (
+  max-width: 600px
+) {
+  .record-navigation {
+    flex-wrap: wrap;
+  }
+
+  .record-position {
+    width: 100%;
+
+    order: -1;
+  }
+}
+
+.record-form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  margin-bottom: 18px;
+
+  padding-bottom: 14px;
+
+  border-bottom:
+    1px solid #cbb99b;
+}
+
+.record-form-title {
+  margin: 0;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 24px;
+
+  color: #513823;
+}
+
+.record-form-subtitle {
+  margin: 5px 0 0;
+
+  color: #78644f;
+
+  font-size: 14px;
+}

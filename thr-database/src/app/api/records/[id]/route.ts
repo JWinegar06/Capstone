@@ -138,6 +138,43 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const requiredFieldsResult = await client.query(
+      `
+    SELECT
+      id,
+      name,
+      field_type
+    FROM fields
+    WHERE collection_id = $1
+      AND required = true;
+    `,
+      [recordCheck.rows[0].collection_id],
+    );
+
+    const missingFields: string[] = [];
+
+    for (const field of requiredFieldsResult.rows) {
+      const value = values[field.id];
+
+      const missing = value === null || value === undefined || value === "";
+
+      if (missing) {
+        missingFields.push(field.name);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Required fields are missing.",
+          fields: missingFields,
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
     await client.query("BEGIN");
 
     for (const [fieldId, value] of Object.entries(values)) {
