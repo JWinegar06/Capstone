@@ -316,6 +316,34 @@ export default function MainWorkspace({
     setViewMode("table");
   }
 
+  function handleRecordDuplicated(recordId: string) {
+    setHasUnsavedChanges(false);
+
+    onDirtyChange?.(false);
+
+    setSelectedRecordId(recordId);
+
+    setRecordRefreshKey((current) => current + 1);
+
+    setViewMode("form");
+  }
+
+  function handleOpenRecord(recordId: string) {
+    if (recordId !== selectedRecordId) {
+      if (!confirmDiscardChanges()) {
+        return;
+      }
+
+      setHasUnsavedChanges(false);
+
+      onDirtyChange?.(false);
+
+      setSelectedRecordId(recordId);
+    }
+
+    setViewMode("form");
+  }
+
   /*
    * No collection selected.
    */
@@ -390,14 +418,23 @@ export default function MainWorkspace({
                 searchQuery={searchQuery}
                 selectedRecordId={selectedRecordId}
                 onSelectRecord={handleSelectRecord}
+                onOpenRecord={handleOpenRecord}
                 refreshKey={recordRefreshKey}
                 onRecordsLoaded={setRecordIds}
               />
 
               {selectedRecordId && (
-                <p className="selected-record-note">
-                  Selected record: <strong>{selectedRecordId}</strong>
-                </p>
+                <div className="selected-record-status">
+                  <span>Record selected</span>
+
+                  <button
+                    type="button"
+                    className="selected-record-open"
+                    onClick={() => handleOpenRecord(selectedRecordId)}
+                  >
+                    Open in Form View →
+                  </button>
+                </div>
               )}
             </>
           ) : selectedRecordId ? (
@@ -414,6 +451,7 @@ export default function MainWorkspace({
                 selectedRecordIndex >= 0 ? selectedRecordIndex + 1 : undefined
               }
               recordCount={recordIds.length}
+              onDuplicated={handleRecordDuplicated}
             />
           ) : (
             <div className="form-view-placeholder">

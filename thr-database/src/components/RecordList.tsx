@@ -29,8 +29,8 @@ type RecordListProps = {
   searchQuery: string;
   selectedRecordId?: string;
   onSelectRecord: (recordId: string) => void;
+  onOpenRecord?: (recordId: string) => void;
   refreshKey: number;
-
   onRecordsLoaded?: (recordIds: string[]) => void;
 };
 
@@ -39,6 +39,7 @@ export default function RecordList({
   searchQuery,
   selectedRecordId,
   onSelectRecord,
+  onOpenRecord,
   refreshKey,
   onRecordsLoaded,
 }: RecordListProps) {
@@ -76,7 +77,6 @@ export default function RecordList({
 
         setError("Unable to load records.");
       }
-      
     }
 
     loadRecords();
@@ -146,9 +146,12 @@ export default function RecordList({
               <tr
                 key={record.id}
                 className={
-                  record.id === selectedRecordId ? "selected-record" : ""
+                  record.id === selectedRecordId
+                    ? "record-row selected"
+                    : "record-row"
                 }
                 onClick={() => onSelectRecord(record.id)}
+                onDoubleClick={() => onOpenRecord?.(record.id)}
               >
                 {data.fields.map((field) => (
                   <td key={field.id}>

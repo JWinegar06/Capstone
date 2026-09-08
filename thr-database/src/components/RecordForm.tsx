@@ -38,6 +38,7 @@ type RecordFormProps = {
   hasNext?: boolean;
   recordPosition?: number;
   recordCount?: number;
+  onDuplicated?: (recordId: string) => void;
 };
 
 export default function RecordForm({
@@ -51,6 +52,7 @@ export default function RecordForm({
   hasNext = false,
   recordPosition,
   recordCount,
+  onDuplicated,
 }: RecordFormProps) {
   const [data, setData] = useState<RecordDetailResponse | null>(null);
 
@@ -68,6 +70,10 @@ export default function RecordForm({
 
   const [saved, setSaved] = useState(false);
 
+  const [duplicating, setDuplicating] = useState(false);
+
+  const [actionsOpen, setActionsOpen] = useState(false);
+
   /*
    * Compare the editable values
    * against the last saved values.
@@ -81,7 +87,7 @@ export default function RecordForm({
     data?.fields ?? [],
     formValues,
     recordTitle.fieldId,
-  );  
+  );
 
   /*
    * Tell MainWorkspace whether
@@ -235,8 +241,25 @@ export default function RecordForm({
        * The current form values
        * are now the saved baseline.
        */
+
+      const result: {
+        success: boolean;
+        record: RecordItem;
+      } = await response.json();
+
       setOriginalValues({
         ...formValues,
+      });
+
+      setData((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          record: result.record,
+        };
       });
 
       setSaved(true);
@@ -266,6 +289,60 @@ export default function RecordForm({
 
     setSaved(false);
     setError(null);
+  }
+
+  async function handleDuplicate() {
+    setActionsOpen(false);
+
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        "This record has unsaved changes. Duplicate the last saved version instead?",
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    try {
+      setDuplicating(true);
+      setError(null);
+
+      const response = await fetch(`/api/records/${recordId}/duplicate`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        let message = "Unable to duplicate record.";
+
+        try {
+          const errorData = await response.json();
+
+          message = errorData.details || errorData.error || message;
+        } catch {
+          // Keep fallback.
+        }
+
+        throw new Error(message);
+      }
+
+      const result: {
+        success: boolean;
+        record: RecordItem;
+      } = await response.json();
+
+      onDuplicated?.(result.record.id);
+    } catch (err) {
+      console.error(err);
+
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Unable to duplicate record.");
+      }
+    } finally {
+      setDuplicating(false);
+    }
   }
 
   /*
@@ -384,31 +461,66 @@ export default function RecordForm({
 
       {/* Form buttons */}
       <div className="form-actions">
-        <button
-          type="submit"
-          className="button primary"
-          disabled={saving || deleting || !hasUnsavedChanges}
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
+        <div className="form-actions-primary">
+          <button
+            type="submit"
+            className="button primary"
+            disabled={saving || deleting || duplicating || !hasUnsavedChanges}
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
 
-        <button
-          type="button"
-          className="button"
-          onClick={handleCancelChanges}
-          disabled={saving || deleting || !hasUnsavedChanges}
-        >
-          Cancel Changes
-        </button>
+          <button
+            type="button"
+            className="button"
+            onClick={handleCancelChanges}
+            disabled={saving || deleting || duplicating || !hasUnsavedChanges}
+          >
+            Cancel Changes
+          </button>
+        </div>
 
-        <button
-          type="button"
-          className="button danger"
-          onClick={handleDelete}
-          disabled={saving || deleting}
-        >
-          {deleting ? "Deleting..." : "Delete Record"}
-        </button>
+        <div className="record-actions">
+          <button
+            type="button"
+            className="button record-actions-button"
+            onClick={() => setActionsOpen((current) => !current)}
+            disabled={saving || deleting || duplicating}
+            aria-expanded={actionsOpen}
+            aria-haspopup="menu"
+          >
+            Actions
+            <span className="actions-arrow" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+
+          {actionsOpen && (
+            <div className="record-actions-menu" role="menu">
+              <button
+                type="button"
+                className="record-action-item"
+                role="menuitem"
+                onClick={handleDuplicate}
+                disabled={duplicating}
+              >
+                {duplicating ? "Duplicating..." : "Duplicate Record"}
+              </button>
+
+              <div className="record-action-divider" />
+
+              <button
+                type="button"
+                className="record-action-item danger"
+                role="menuitem"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete Record"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <div className="record-form-header">
         <div>
@@ -417,6 +529,34 @@ export default function RecordForm({
           {recordSubtitle && (
             <p className="record-form-subtitle">{recordSubtitle}</p>
           )}
+        </div>
+      </div>
+      <div className="record-metadata">
+        {data.record.import_order !== null &&
+          data.record.import_order !== undefined && (
+            <div className="record-metadata-item">
+              <span className="record-metadata-label">Original Order</span>
+
+              <span className="record-metadata-value">
+                {data.record.import_order}
+              </span>
+            </div>
+          )}
+
+        <div className="record-metadata-item">
+          <span className="record-metadata-label">Created</span>
+
+          <span className="record-metadata-value">
+            {formatDateTime(data.record.created_at)}
+          </span>
+        </div>
+
+        <div className="record-metadata-item">
+          <span className="record-metadata-label">Last Updated</span>
+
+          <span className="record-metadata-value">
+            {formatDateTime(data.record.updated_at)}
+          </span>
         </div>
       </div>
       <div className="record-navigation">
@@ -720,4 +860,20 @@ function getRecordSubtitle(
   }
 
   return null;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

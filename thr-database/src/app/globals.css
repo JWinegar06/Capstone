@@ -1643,13 +1643,20 @@ button.primary:hover {
 .form-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
 
   margin-top: 22px;
-
   padding-top: 16px;
 
-  border-top: 1px solid #cbb99b;
+  border-top:
+    1px solid #cbb99b;
+}
+
+.form-actions-primary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .button.danger {
@@ -1696,14 +1703,39 @@ button.primary:hover {
 @media (
   max-width: 600px
 ) {
-  .record-navigation {
-    flex-wrap: wrap;
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .record-position {
+  .form-actions-primary {
     width: 100%;
+    flex-direction: column;
+  }
 
-    order: -1;
+  .form-actions-primary .button {
+    width: 100%;
+  }
+
+  .record-actions {
+    width: 100%;
+  }
+
+  .record-actions-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .record-actions-menu {
+    width: 100%;
+  }
+
+  .selected-record-status {
+    align-items:
+      flex-start;
+
+    flex-direction:
+      column;
   }
 }
 
@@ -1739,4 +1771,172 @@ button.primary:hover {
   color: #78644f;
 
   font-size: 14px;
+}
+
+.record-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+
+  margin-bottom: 18px;
+  padding: 10px 12px;
+
+  background: #eee5d5;
+
+  border:
+    1px solid #c7b391;
+}
+
+.record-metadata-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  font-size: 12px;
+}
+
+.record-metadata-label {
+  color: #6d5944;
+
+  font-weight: 700;
+}
+
+.record-metadata-label::after {
+  content: ":";
+}
+
+.record-metadata-value {
+  color: #49382a;
+}
+
+.record-actions {
+  position: relative;
+}
+
+.record-actions-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.actions-arrow {
+  font-size: 10px;
+}
+
+.record-actions-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+
+  z-index: 20;
+
+  width: 190px;
+
+  padding: 5px;
+
+  background: #fffdf7;
+
+  border:
+    1px solid #a9916f;
+
+  border-radius: 3px;
+
+  box-shadow:
+    0 4px 12px
+    rgba(60, 40, 20, 0.2);
+}
+
+.record-action-item {
+  display: block;
+
+  width: 100%;
+
+  padding: 9px 10px;
+
+  border: 0;
+
+  background: transparent;
+
+  color: #49382a;
+
+  text-align: left;
+
+  border-radius: 2px;
+}
+
+.record-action-item:hover {
+  background: #eee3d1;
+}
+
+.record-action-item.danger {
+  color: #8b302c;
+}
+
+.record-action-item.danger:hover {
+  background: #f3dfdc;
+}
+
+.record-action-divider {
+  height: 1px;
+
+  margin: 4px 0;
+
+  background: #d7c7ae;
+}
+
+.record-row {
+  cursor: pointer;
+
+  transition:
+    background-color 0.15s ease;
+}
+
+.record-row:hover {
+  background: #f3eadb;
+}
+
+.record-row.selected {
+  background: #e4d3b7;
+}
+
+.record-row.selected:hover {
+  background: #ddc9a8;
+}
+
+.selected-record-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-top: 10px;
+  padding: 8px 12px;
+
+  background: #eee5d5;
+
+  border:
+    1px solid #cbb99b;
+
+  color: #594633;
+
+  font-size: 13px;
+}
+
+.selected-record-open {
+  padding: 0;
+
+  border: 0;
+
+  background: transparent;
+
+  color: #704b2d;
+
+  font: inherit;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.selected-record-open:hover {
+  text-decoration: underline;
 }

@@ -207,13 +207,18 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
-    await client.query(
+    const updatedRecordResult = await client.query(
       `
-      UPDATE records
-      SET updated_at =
-        NOW()
-      WHERE id = $1;
-      `,
+    UPDATE records
+    SET updated_at = NOW()
+    WHERE id = $1
+    RETURNING
+      id,
+      collection_id,
+      import_order,
+      created_at,
+      updated_at;
+    `,
       [id],
     );
 
@@ -221,7 +226,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
-      recordId: id,
+      record: updatedRecordResult.rows[0],
     });
   } catch (error) {
     try {
